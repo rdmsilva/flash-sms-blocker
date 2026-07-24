@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Flash SMS Blocker</string>
+    <string name="accessibility_description">Detecta e fecha instantaneamente popups de SMS Class 0 (Flash SMS). Nao coleta nenhum dado do usuario.</string>
+</resources>

@@ -1,0 +1,101 @@
+plugins {
+    id 'com.android.application'
+    id 'jacoco'
+}
+
+android {
+    namespace 'com.flashblocker'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.flashblocker"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    // Assinatura release para `./gradlew assembleRelease`. O keystore fica FORA
+    // do repo (README, seção "Assinando o release"); a senha vem só de variável
+    // de ambiente, nunca de arquivo comitado. Sem keystore/senha o assembleRelease
+    // gera APK não assinado — os contribuidores não precisam de nada disso.
+    def releaseKs = file(System.getenv('RELEASE_KEYSTORE')
+        ?: "${System.getProperty('user.home')}/.keystores/flash-sms-blocker.jks")
+    def releaseKsPass = System.getenv('RELEASE_KEYSTORE_PASSWORD')
+    def releaseSigningReady = releaseKs.exists() && releaseKsPass != null
+
+    signingConfigs {
+        if (releaseSigningReady) {
+            release {
+                storeFile releaseKs
+                storePassword releaseKsPass
+                keyAlias System.getenv('RELEASE_KEY_ALIAS') ?: 'flash'
+                keyPassword System.getenv('RELEASE_KEY_PASSWORD') ?: releaseKsPass
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseSigningReady) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    // Apenas para os testes de unidade na JVM — nada disso entra no APK,
+    // que continua sem nenhuma dependência de runtime.
+    testImplementation 'junit:junit:4.13.2'
+}
+
+// ---- Cobertura (JaCoCo) ------------------------------------------------
+// 100% de linha e branch exigidos nas classes de lógica (FlashPopupRule e
+// BlockStats). MainActivity e FlashSmsAccessibilityService ficam fora da
+// medição: são cola de API Android (acessibilidade/UI), sem lógica própria,
+// e o teste real delas é no aparelho (ver CLAUDE.md).
+
+def coverageClasses = ['com/flashblocker/FlashPopupRule*.class',
+                       'com/flashblocker/BlockStats*.class']
+
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+    group = 'verification'
+    description = 'Relatório HTML de cobertura dos testes de unidade.'
+    executionData.from = files("${buildDir}/jacoco/testDebugUnitTest.exec")
+    sourceDirectories.from = files('src/main/java')
+    classDirectories.from = fileTree(dir: "${buildDir}/intermediates/javac/debug/classes",
+        includes: coverageClasses)
+    reports {
+        html.required = true
+        xml.required = false
+    }
+}
+
+tasks.register('jacocoCoverageVerification', JacocoCoverageVerification) {
+    dependsOn 'testDebugUnitTest'
+    group = 'verification'
+    description = 'Falha o build se a cobertura das classes de lógica for < 100%.'
+    executionData.from = files("${buildDir}/jacoco/testDebugUnitTest.exec")
+    sourceDirectories.from = files('src/main/java')
+    classDirectories.from = fileTree(dir: "${buildDir}/intermediates/javac/debug/classes",
+        includes: coverageClasses)
+    violationRules {
+        rule {
+            limit { counter = 'LINE';   value = 'COVEREDRATIO'; minimum = 1.0 }
+        }
+        rule {
+            limit { counter = 'BRANCH'; value = 'COVEREDRATIO'; minimum = 1.0 }
+        }
+    }
+}
+
+tasks.named('check') { dependsOn 'jacocoCoverageVerification' }

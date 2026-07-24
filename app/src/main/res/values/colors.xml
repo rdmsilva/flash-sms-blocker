@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Adaptive icon background (mipmap-anydpi-v26/ic_launcher.xml).
+         White to match the background of the icon art (art/new_icon.jpg). -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+
+    <!-- Surfaces -->
+    <color name="bg">#EEF1F5</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="divider">#E3E7EC</color>
+
+    <!-- Text -->
+    <color name="text_primary">#1A1C1E</color>
+    <color name="text_secondary">#626A75</color>
+    <color name="log_text">#3A4149</color>
+
+    <!-- Brand -->
+    <color name="primary">#E23B3B</color>
+    <color name="primary_dark">#B3261E</color>
+    <color name="accent">#E23B3B</color>
+    <color name="header_text">#FFFFFF</color>
+    <color name="header_subtitle">#FFDCDC</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- State: active (green) -->
+    <color name="success">#1E9E6A</color>
+    <color name="success_bg">#E5F5EE</color>
+    <color name="success_stroke">#B8E6D2</color>
+
+    <!-- State: inactive (red) -->
+    <color name="danger">#C93741</color>
+    <color name="danger_bg">#FBE9EA</color>
+    <color name="danger_stroke">#F1C4C7</color>
+
+    <!-- State: learning mode (amber warning) -->
+    <color name="warning">#9A6600</color>
+    <color name="warning_bg">#FFF4E0</color>
+    <color name="warning_stroke">#F0D9A6</color>
+
+    <color name="press_overlay">#14000000</color>
+</resources>

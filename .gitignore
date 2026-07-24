@@ -1,0 +1,34 @@
+# Build outputs
+/build/
+app/build/
+/.gradle/
+.gradle/
+local.properties
+gen/
+captures/
+.cxx/
+.externalNativeBuild/
+
+# APKs / App Bundles e chaves de assinatura — o APK e distribuido via GitHub
+# Releases, nunca commitado. Chaves e senhas NUNCA entram no repositorio.
+*.apk
+*.aab
+*.jks
+*.keystore
+*.p12
+*.pepk
+keystore.properties
+signing.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Diversos
+*.hprof
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
