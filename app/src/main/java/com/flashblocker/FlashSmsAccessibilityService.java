@@ -2,6 +2,9 @@ package com.flashblocker;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -48,26 +51,54 @@ public class FlashSmsAccessibilityService extends AccessibilityService {
     /** Live instance while the service is connected; lets MainActivity pause it. */
     private static FlashSmsAccessibilityService instance;
 
+    /** How long a "Pausar por 15 min" lasts before the reminder notification fires. */
+    public static final long PAUSE_DURATION_MS = 15 * 60 * 1000L;
+
     /**
      * Pauses blocking by REALLY disabling the accessibility service
      * ({@link #disableSelf()}). A soft pause (keeping the service bound but
      * inert) would not help: bank anti-fraud checks react to the service being
      * enabled at all, not to what it does. Resuming requires the user to
      * re-enable the service in the accessibility settings — Android offers no
-     * API to re-enable yourself.
+     * API to re-enable yourself; the best we can do is schedule a reminder
+     * notification for when {@link #PAUSE_DURATION_MS} is up.
      *
      * @return false if the service is not connected (nothing to pause).
      */
     public static boolean pause() {
         FlashSmsAccessibilityService s = instance;
         if (s == null) return false;
+        long until = System.currentTimeMillis() + PAUSE_DURATION_MS;
         // Order matters: persist the paused flag before disableSelf() tears
         // the service down, so the UI can tell "paused" from "never enabled".
         s.stats().setPaused(true);
-        s.stats().recordEvent("PAUSA", "Bloqueio pausado pelo usuário");
-        Log.i(TAG, "Bloqueio pausado pelo usuário (disableSelf)");
+        s.stats().setPauseUntil(until);
+        s.stats().recordEvent("PAUSA", "Bloqueio pausado por 15 min pelo usuário");
+        Log.i(TAG, "Bloqueio pausado pelo usuário por 15 min (disableSelf)");
+        s.schedulePauseReminder(until);
         s.disableSelf();
         return true;
+    }
+
+    /** Schedules the reminder notification handled by {@link PauseExpiredReceiver}. */
+    private void schedulePauseReminder(long triggerAtMillis) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (alarmManager == null) return;
+        PendingIntent pi = pauseReminderPendingIntent();
+        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+    }
+
+    /** Cancels a pending reminder (the user re-enabled the service before it fired). */
+    private void cancelPauseReminder() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (alarmManager == null) return;
+        alarmManager.cancel(pauseReminderPendingIntent());
+    }
+
+    private PendingIntent pauseReminderPendingIntent() {
+        Intent intent = new Intent(this, PauseExpiredReceiver.class);
+        return PendingIntent.getBroadcast(this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     @Override
@@ -78,6 +109,8 @@ public class FlashSmsAccessibilityService extends AccessibilityService {
         stats = stats();
         // If the user re-enabled the service after a pause, the pause is over.
         stats.setPaused(false);
+        stats.setPauseUntil(0L);
+        cancelPauseReminder();
 
         AccessibilityServiceInfo info = getServiceInfo();
         if (info != null) {

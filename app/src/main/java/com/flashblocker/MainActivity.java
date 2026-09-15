@@ -1,8 +1,11 @@
 package com.flashblocker;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.MenuItem;
@@ -10,6 +13,8 @@ import android.view.View;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Main screen of the app.
@@ -23,6 +28,7 @@ public class MainActivity extends Activity {
     private static final int MENU_LEARNING = 2;
     private static final int MENU_ABOUT = 3;
     private static final int MENU_PAUSE = 4;
+    private static final int REQ_NOTIFICATION_PERMISSION = 1;
 
     private TextView statusAccessibility;
     private TextView statNumber;
@@ -79,7 +85,7 @@ public class MainActivity extends Activity {
         if (isAccessibilityEnabled()) {
             // Real disable via disableSelf() — needed because bank apps refuse
             // to run while any unknown accessibility service is enabled.
-            popup.getMenu().add(0, MENU_PAUSE, 0, "Pausar bloqueio (apps de banco)");
+            popup.getMenu().add(0, MENU_PAUSE, 0, "Pausar por 15 min (apps de banco)");
         } else {
             popup.getMenu().add(0, MENU_ENABLE, 0, "Ativar acessibilidade");
         }
@@ -112,13 +118,28 @@ public class MainActivity extends Activity {
     }
 
     private void pauseBlocking() {
+        requestNotificationPermissionIfNeeded();
         boolean ok = FlashSmsAccessibilityService.pause();
         Toast.makeText(this, ok
-            ? "Bloqueio pausado — o serviço de acessibilidade foi desativado. "
-              + "Para retomar, toque no card de status e reative o serviço."
+            ? "Bloqueio pausado por 15 min — o serviço de acessibilidade foi "
+              + "desativado. Ao acabar o tempo você recebe uma notificação "
+              + "para reativar (Android não permite reativar sozinho)."
             : "O serviço não está conectado — nada para pausar.",
             Toast.LENGTH_LONG).show();
         refreshStats();
+    }
+
+    /**
+     * Android 13+ requires runtime consent to post notifications. Without it
+     * the pause still works, it just won't be able to remind the user when
+     * the 15 min are up.
+     */
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) return;
+        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+            REQ_NOTIFICATION_PERMISSION);
     }
 
     private void toggleLearningMode() {
@@ -154,7 +175,7 @@ public class MainActivity extends Activity {
             statusAccessibility.setTextColor(getColor(R.color.warning));
             statusAccessibility.setBackgroundResource(R.drawable.status_warning_bg);
         } else if (stats.isPaused() && !isAccessibilityEnabled()) {
-            statusAccessibility.setText("⏸  Bloqueio pausado — toque aqui para reativar");
+            statusAccessibility.setText(pauseStatusText());
             statusAccessibility.setTextColor(getColor(R.color.warning));
             statusAccessibility.setBackgroundResource(R.drawable.status_warning_bg);
         } else if (isAccessibilityEnabled()) {
@@ -170,6 +191,17 @@ public class MainActivity extends Activity {
         statNumber.setText(String.valueOf(stats.getBlockedCount()));
         statsLastBlocked.setText("Último bloqueio: " + stats.getLastBlockedTime());
         logView.setText(stats.getLog());
+    }
+
+    /** Status text while a timed pause is active (or has just run out). */
+    private String pauseStatusText() {
+        long remainingMs = stats.getPauseUntil() - System.currentTimeMillis();
+        if (remainingMs <= 0) {
+            return "⏸  Pausa encerrada — toque aqui para reativar";
+        }
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(remainingMs) + 1;
+        return "⏸  Bloqueio pausado — reativa em ~" + minutes
+            + " min (ou toque aqui antes)";
     }
 
     /** Checks whether this app's AccessibilityService is active. */

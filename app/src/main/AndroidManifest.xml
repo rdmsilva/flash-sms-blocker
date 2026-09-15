@@ -8,9 +8,13 @@
          here so the gradle-free manual build produces the correct SDK level. -->
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
-    <!-- The app requests no permissions at all. It does NOT read, send or store
-         SMS; the AccessibilityService below is protected by the system's
-         BIND_ACCESSIBILITY_SERVICE (android:permission on the <service>). -->
+    <!-- The app does NOT read, send or store SMS; the AccessibilityService
+         below is protected by the system's BIND_ACCESSIBILITY_SERVICE
+         (android:permission on the <service>). The only permission requested
+         is POST_NOTIFICATIONS, used solely to remind the user to re-enable
+         the service when a timed pause (⋮ menu, for bank apps) runs out —
+         Android has no API for the app to re-enable itself. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -43,6 +47,13 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_config" />
         </service>
+
+        <!-- Fires when a timed pause runs out; reminds the user via notification
+             to re-enable the accessibility service (Android has no API to do
+             it automatically). -->
+        <receiver
+            android:name=".PauseExpiredReceiver"
+            android:exported="false" />
 
     </application>
 </manifest>

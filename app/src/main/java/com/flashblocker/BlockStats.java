@@ -18,6 +18,7 @@ public class BlockStats {
     private static final String KEY_LOG = "event_log";
     private static final String KEY_LEARNING = "learning_mode";
     private static final String KEY_PAUSED = "paused_by_user";
+    private static final String KEY_PAUSE_UNTIL = "paused_until_millis";
 
     private final SharedPreferences prefs;
 
@@ -118,5 +119,17 @@ public class BlockStats {
 
     public void setPaused(boolean on) {
         prefs.edit().putBoolean(KEY_PAUSED, on).apply();
+    }
+
+    /**
+     * Epoch millis when a timed pause ({@link #setPauseUntil}) is due to
+     * expire. 0 means no timed pause is pending.
+     */
+    public long getPauseUntil() {
+        return prefs.getLong(KEY_PAUSE_UNTIL, 0L);
+    }
+
+    public void setPauseUntil(long epochMillis) {
+        prefs.edit().putLong(KEY_PAUSE_UNTIL, epochMillis).apply();
     }
 }

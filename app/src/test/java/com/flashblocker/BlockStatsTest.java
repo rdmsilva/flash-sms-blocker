@@ -121,4 +121,15 @@ public class BlockStatsTest {
         stats.clear();
         assertTrue(stats.isPaused());
     }
+
+    @Test
+    public void pauseUntilComecaZerado() {
+        assertEquals(0L, stats.getPauseUntil());
+    }
+
+    @Test
+    public void pauseUntilGuardaOTimestamp() {
+        stats.setPauseUntil(123456789L);
+        assertEquals(123456789L, stats.getPauseUntil());
+    }
 }
